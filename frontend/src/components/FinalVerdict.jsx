@@ -1,10 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 function getScoreColor(score) {
   if (score > 70) return '#4ade80';
   if (score >= 40) return '#facc15';
   return '#f87171';
+}
+
+function AnimatedScore({ value, delayMs = 0 }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    let frameId;
+    let startTime;
+    let startVal = 0;
+
+    const timeout = setTimeout(() => {
+      startTime = performance.now();
+      const animate = (now) => {
+        const elapsed = now - startTime;
+        const duration = 1500; // 1.5s for the count up
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplay(Math.round(startVal + (value - startVal) * eased));
+
+        if (progress < 1) {
+          frameId = requestAnimationFrame(animate);
+        }
+      };
+      frameId = requestAnimationFrame(animate);
+    }, delayMs);
+
+    return () => {
+      clearTimeout(timeout);
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [value, delayMs]);
+
+  return display;
 }
 
 const agentMeta = [
@@ -27,7 +60,7 @@ export default function FinalVerdict({ verdict, onReset }) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 1 }}
       style={{
         minHeight: '100vh',
         background: '#0a0a0f',
@@ -35,6 +68,7 @@ export default function FinalVerdict({ verdict, onReset }) {
         padding: '48px 24px',
         display: 'flex',
         justifyContent: 'center',
+        position: 'relative',
       }}
     >
       <div
@@ -44,6 +78,8 @@ export default function FinalVerdict({ verdict, onReset }) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* Title */}
@@ -56,11 +92,26 @@ export default function FinalVerdict({ verdict, onReset }) {
             textTransform: 'uppercase',
             letterSpacing: '0.3em',
             color: '#94a3b8',
-            marginBottom: '40px',
+            marginBottom: '20px',
           }}
         >
           DELPHI VERDICT
         </motion.div>
+
+        {/* ANALYSIS COMPLETE Typewriter */}
+        <div style={{ height: '30px', marginBottom: '20px' }}>
+          <div
+            className="typewriter-text"
+            style={{
+              fontSize: '16px',
+              fontWeight: 700,
+              color: '#f8fafc',
+              letterSpacing: '0.15em',
+            }}
+          >
+            ANALYSIS COMPLETE
+          </div>
+        </div>
 
         {/* Three Score Circles */}
         <div
@@ -75,13 +126,14 @@ export default function FinalVerdict({ verdict, onReset }) {
           {agentMeta.map((agent, i) => {
             const agentScore = scores[agent.key] ?? 0;
             const scoreColor = getScoreColor(agentScore);
+            const delay = 1000 + i * 400; // stagger start times
 
             return (
               <motion.div
                 key={agent.key}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.3 + i * 0.15, type: 'spring', stiffness: 200, damping: 15 }}
+                transition={{ delay: delay / 1000, type: 'spring', stiffness: 200, damping: 15 }}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -99,6 +151,7 @@ export default function FinalVerdict({ verdict, onReset }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: 'transparent',
+                    boxShadow: `0 0 20px ${agent.color}20, inset 0 0 20px ${agent.color}20`,
                   }}
                 >
                   <span
@@ -108,7 +161,7 @@ export default function FinalVerdict({ verdict, onReset }) {
                       color: scoreColor,
                     }}
                   >
-                    {agentScore}
+                    <AnimatedScore value={agentScore} delayMs={delay + 300} />
                   </span>
                 </div>
                 <span
@@ -127,34 +180,58 @@ export default function FinalVerdict({ verdict, onReset }) {
           })}
         </div>
 
+        {/* Horizontal drawing line before verdict */}
+        <div
+          style={{
+            width: '100%',
+            height: '1px',
+            background: '#1e1e2e',
+            marginBottom: '40px',
+            position: 'relative',
+          }}
+        >
+          <div
+            className="draw-line"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, #ef4444, transparent)',
+            }}
+          />
+        </div>
+
         {/* DELPHI Overall Score */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.8, type: 'spring', stiffness: 150 }}
+          transition={{ delay: 2.8, type: 'spring', stiffness: 150 }}
           style={{
             textAlign: 'center',
             marginBottom: '24px',
           }}
+          className={overallScore < 50 ? 'shake-score' : ''}
         >
           <div
             className="score-pulse"
             style={{
-              fontSize: '96px',
+              fontSize: '120px',
               fontWeight: 900,
               color: overallColor,
               lineHeight: 1,
             }}
           >
-            {overallScore}
+            <AnimatedScore value={overallScore} delayMs={2900} />
           </div>
           <div
             style={{
-              fontSize: '11px',
+              fontSize: '14px',
+              fontWeight: 700,
               textTransform: 'uppercase',
-              letterSpacing: '0.2em',
+              letterSpacing: '0.3em',
               color: '#94a3b8',
-              marginTop: '8px',
+              marginTop: '12px',
             }}
           >
             DELPHI SCORE
@@ -164,15 +241,16 @@ export default function FinalVerdict({ verdict, onReset }) {
         {/* Verdict Sentence */}
         {sentence && (
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 4.5 }}
             style={{
               fontStyle: 'italic',
-              color: '#94a3b8',
-              fontSize: '18px',
+              color: '#f8fafc',
+              fontSize: '20px',
+              fontWeight: 600,
               textAlign: 'center',
-              maxWidth: '600px',
+              maxWidth: '640px',
               lineHeight: 1.6,
               marginBottom: '32px',
             }}
@@ -186,13 +264,14 @@ export default function FinalVerdict({ verdict, onReset }) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.1 }}
+            transition={{ delay: 5.5 }}
             style={{
-              fontSize: '24px',
-              fontWeight: 700,
+              fontSize: '28px',
+              fontWeight: 800,
               color: getScoreColor(survival),
-              marginBottom: '40px',
+              marginBottom: '48px',
               textAlign: 'center',
+              textShadow: `0 0 20px ${getScoreColor(survival)}40`,
             }}
           >
             {survival}% Survival Probability
@@ -204,49 +283,53 @@ export default function FinalVerdict({ verdict, onReset }) {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2 }}
-            style={{ width: '100%', marginBottom: '40px' }}
+            transition={{ delay: 6 }}
+            style={{ width: '100%', marginBottom: '60px' }}
           >
             <div
               style={{
-                fontSize: '11px',
+                fontSize: '12px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.2em',
                 color: '#94a3b8',
-                marginBottom: '16px',
+                marginBottom: '20px',
                 fontWeight: 700,
+                textAlign: 'center',
               }}
             >
-              TOP FIXES
+              CRITICAL INTERVENTIONS REQUIRED
             </div>
             <div
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
-                gap: '12px',
+                gap: '16px',
+                justifyContent: 'center',
               }}
             >
               {fixes.slice(0, 5).map((fix, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.3 + i * 0.08 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 6.2 + i * 0.15 }}
                   style={{
                     background: '#13131a',
                     border: '1px solid #1e1e2e',
+                    borderLeft: `3px solid ${i === 0 ? '#ef4444' : '#3b82f6'}`,
                     borderRadius: '8px',
-                    padding: '16px',
-                    flex: '1 1 calc(50% - 12px)',
-                    minWidth: '250px',
+                    padding: '20px',
+                    flex: '1 1 calc(50% - 16px)',
+                    minWidth: '300px',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
                   }}
                 >
                   <div
                     style={{
-                      fontSize: '14px',
+                      fontSize: '15px',
                       fontWeight: 700,
                       color: '#f8fafc',
-                      marginBottom: '8px',
+                      marginBottom: '12px',
                     }}
                   >
                     {fix.title || fix.name || `Fix ${i + 1}`}
@@ -256,13 +339,13 @@ export default function FinalVerdict({ verdict, onReset }) {
                       <span
                         style={{
                           fontSize: '10px',
-                          fontWeight: 600,
-                          padding: '3px 8px',
-                          borderRadius: '999px',
+                          fontWeight: 700,
+                          padding: '4px 10px',
+                          borderRadius: '4px',
                           background: '#1a2332',
                           color: '#60a5fa',
                           textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
+                          letterSpacing: '0.1em',
                         }}
                       >
                         Impact: {fix.impact}
@@ -272,13 +355,13 @@ export default function FinalVerdict({ verdict, onReset }) {
                       <span
                         style={{
                           fontSize: '10px',
-                          fontWeight: 600,
-                          padding: '3px 8px',
-                          borderRadius: '999px',
+                          fontWeight: 700,
+                          padding: '4px 10px',
+                          borderRadius: '4px',
                           background: '#1a1a2e',
                           color: '#a78bfa',
                           textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
+                          letterSpacing: '0.1em',
                         }}
                       >
                         Effort: {fix.effort}
@@ -288,10 +371,10 @@ export default function FinalVerdict({ verdict, onReset }) {
                   {fix.description && (
                     <p
                       style={{
-                        fontSize: '12px',
+                        fontSize: '13px',
                         color: '#94a3b8',
-                        marginTop: '8px',
-                        lineHeight: 1.5,
+                        marginTop: '12px',
+                        lineHeight: 1.6,
                       }}
                     >
                       {fix.description}
@@ -307,31 +390,33 @@ export default function FinalVerdict({ verdict, onReset }) {
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
+          transition={{ delay: 7.5 }}
           onClick={onReset}
           style={{
-            padding: '14px 40px',
+            padding: '16px 48px',
             background: 'transparent',
             border: '1px solid #94a3b8',
             borderRadius: '8px',
             color: '#94a3b8',
-            fontSize: '13px',
+            fontSize: '14px',
             fontWeight: 700,
             textTransform: 'uppercase',
-            letterSpacing: '0.15em',
+            letterSpacing: '0.2em',
             cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            marginBottom: '48px',
+            transition: 'all 0.3s ease',
+            marginBottom: '80px',
           }}
           onMouseEnter={(e) => {
             e.target.style.borderColor = '#f8fafc';
             e.target.style.color = '#f8fafc';
-            e.target.style.boxShadow = '0 0 20px rgba(255,255,255,0.08)';
+            e.target.style.boxShadow = '0 0 30px rgba(255,255,255,0.1)';
+            e.target.style.background = 'rgba(255,255,255,0.05)';
           }}
           onMouseLeave={(e) => {
             e.target.style.borderColor = '#94a3b8';
             e.target.style.color = '#94a3b8';
             e.target.style.boxShadow = 'none';
+            e.target.style.background = 'transparent';
           }}
         >
           CONSULT AGAIN

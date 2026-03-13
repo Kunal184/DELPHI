@@ -10,6 +10,8 @@ body { background-color: #0a0a0f; color: #f8fafc; font-family: 'Inter', sans-ser
 ::-webkit-scrollbar-track { background: #13131a; }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
+/* ===== ANIMATIONS ===== */
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -30,6 +32,60 @@ body { background-color: #0a0a0f; color: #f8fafc; font-family: 'Inter', sans-ser
   50% { text-shadow: 0 0 60px currentColor, 0 0 100px currentColor; }
 }
 
+@keyframes title-glow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+@keyframes scan-line {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes grid-drift {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(30px, 30px); }
+}
+
+@keyframes flash-red {
+  0%, 100% { opacity: 1; }
+  25% { opacity: 0.4; color: #ff0000; }
+  50% { opacity: 1; color: #ef4444; }
+  75% { opacity: 0.4; color: #ff0000; }
+}
+
+@keyframes draw-line {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-8px); }
+  20% { transform: translateX(8px); }
+  30% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  50% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  90% { transform: translateX(-1px); }
+}
+
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+/* ===== CLASSES ===== */
+
 .blink-cursor {
   animation: blink 1s step-end infinite;
 }
@@ -44,4 +100,45 @@ body { background-color: #0a0a0f; color: #f8fafc; font-family: 'Inter', sans-ser
 
 .score-pulse {
   animation: score-pulse 3s ease-in-out infinite;
+}
+
+.title-glow-bg {
+  animation: title-glow 4s ease-in-out infinite;
+}
+
+.scan-line {
+  animation: scan-line 3s ease-in-out infinite;
+}
+
+.flash-red {
+  animation: flash-red 0.6s ease-in-out 3;
+}
+
+.draw-line {
+  animation: draw-line 1.5s ease-out forwards;
+}
+
+.shake-score {
+  animation: shake 0.6s ease-in-out;
+  animation-delay: 1.2s;
+}
+
+.live-dot {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+.typewriter-text {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid #94a3b8;
+  animation: typewriter 2s steps(20) forwards, blink 0.8s step-end infinite;
+  animation-delay: 0s, 2s;
+}
+
+/* Grid background for landing */
+.grid-bg {
+  background-image: 
+    radial-gradient(circle, #1a1a2e 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: grid-drift 20s linear infinite;
 }

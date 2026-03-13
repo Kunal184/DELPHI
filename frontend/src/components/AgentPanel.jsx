@@ -6,6 +6,7 @@ import FindingCard from './FindingCard';
 export default function AgentPanel({ name, color, icon: Icon, status, reasoning, findings }) {
   const isAnalyzing = status === 'analyzing';
   const isComplete = status === 'complete';
+  const findingCount = findings ? findings.length : 0;
 
   return (
     <div
@@ -24,8 +25,26 @@ export default function AgentPanel({ name, color, icon: Icon, status, reasoning,
         overflow: 'hidden',
         transition: 'border 0.3s ease, box-shadow 0.3s ease',
         minHeight: 0,
+        position: 'relative',
       }}
     >
+      {/* Scanning line animation when analyzing */}
+      {isAnalyzing && (
+        <div
+          className="scan-line"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: `linear-gradient(90deg, transparent, ${color}60, transparent)`,
+            boxShadow: `0 0 15px ${color}40, 0 0 30px ${color}20`,
+            zIndex: 2,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
       {/* Header */}
       <div
         style={{
@@ -51,6 +70,24 @@ export default function AgentPanel({ name, color, icon: Icon, status, reasoning,
           >
             {name}
           </span>
+          {/* Findings counter badge */}
+          {findingCount > 0 && (
+            <span
+              style={{
+                background: `${color}20`,
+                color: color,
+                fontSize: '10px',
+                fontWeight: 700,
+                padding: '2px 7px',
+                borderRadius: '999px',
+                minWidth: '20px',
+                textAlign: 'center',
+                border: `1px solid ${color}30`,
+              }}
+            >
+              {findingCount}
+            </span>
+          )}
         </div>
         <div>
           {status === 'idle' && (
@@ -131,12 +168,20 @@ export default function AgentPanel({ name, color, icon: Icon, status, reasoning,
         >
           {findings && findings.length > 0 ? (
             findings.map((finding, i) => (
-              <FindingCard
+              <div
                 key={i}
-                severity={finding.severity}
-                category={finding.category}
-                text={finding.text}
-              />
+                style={{
+                  transform: `translateX(${Math.min(i * 1, 4)}px)`,
+                  position: 'relative',
+                  zIndex: findings.length - i,
+                }}
+              >
+                <FindingCard
+                  severity={finding.severity}
+                  category={finding.category}
+                  text={finding.text}
+                />
+              </div>
             ))
           ) : (
             <div
