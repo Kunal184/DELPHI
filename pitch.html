@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELPHI - Hackathon Pitch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --gold: #eab308;
+            --orange: #f97316;
+            --border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(255, 255, 255, 0.03);
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .presentation {
+            position: relative;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            padding: 4rem;
+            text-align: center;
+            background-color: var(--bg);
+        }
+
+        .slide.active {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        /* Slide specific backgrounds */
+        .bg-glow-red {
+            background: radial-gradient(circle at center, rgba(239,68,68,0.15) 0%, var(--bg) 60%);
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 120px;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            margin-bottom: 1rem;
+            line-height: 1.1;
+        }
+
+        .slide-title {
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            margin-bottom: 4rem;
+            color: var(--text);
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 32px;
+            font-weight: 300;
+            color: var(--muted);
+            margin-bottom: 2rem;
+        }
+
+        .bottom-text {
+            position: absolute;
+            bottom: 4rem;
+            font-size: 20px;
+            color: var(--muted);
+            font-weight: 400;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Grid specific */
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 3rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .card-red { border-top: 3px solid var(--red); }
+        .card-orange { border-top: 3px solid var(--orange); }
+        .card-yellow { border-top: 3px solid var(--gold); }
+        .card-blue { border-top: 3px solid var(--blue); }
+
+        .stat-number {
+            font-size: 80px;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1;
+        }
+
+        .color-red { color: var(--red); text-shadow: 0 0 20px rgba(239,68,68,0.4); }
+        .color-orange { color: var(--orange); text-shadow: 0 0 20px rgba(249,115,22,0.4); }
+        .color-yellow { color: var(--gold); text-shadow: 0 0 20px rgba(234,179,8,0.4); }
+        .color-blue { color: var(--blue); text-shadow: 0 0 20px rgba(59,130,246,0.4); }
+
+        .card-text {
+            font-size: 20px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        /* Tables */
+        .comparison-table {
+            width: 100%;
+            max-width: 1100px;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 22px;
+            margin-bottom: 3rem;
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        
+        .comparison-table th, .comparison-table td {
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .comparison-table th {
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .comparison-table th:first-child, .comparison-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text);
+            padding-left: 2rem;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+            background: rgba(239, 68, 68, 0.1);
+            color: white;
+            font-weight: 800;
+        }
+
+        .check { color: #22c55e; font-weight: bold; font-size: 24px; text-shadow: 0 0 10px rgba(34, 197, 94, 0.4); }
+        .cross { color: #ef4444; font-weight: bold; font-size: 24px; opacity: 0.5; }
+
+        /* Slide Number */
+        .slide-number {
+            position: fixed;
+            bottom: 2rem;
+            right: 3rem;
+            font-size: 18px;
+            color: var(--muted);
+            font-weight: 600;
+            z-index: 50;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: var(--red);
+            box-shadow: 0 0 15px rgba(239,68,68,0.8);
+            transition: width 0.4s ease-out;
+            z-index: 50;
+        }
+
+        /* Animations */
+        .pulse-dots {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2rem;
+        }
+
+        .dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: pulse 2s infinite ease-in-out alternate;
+        }
+
+        .dot-red { background: var(--red); box-shadow: 0 0 20px var(--red); animation-delay: 0s; }
+        .dot-blue { background: var(--blue); box-shadow: 0 0 20px var(--blue); animation-delay: 0.6s; }
+        .dot-gold { background: var(--gold); box-shadow: 0 0 20px var(--gold); animation-delay: 1.2s; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.3; }
+            100% { transform: scale(1.5); opacity: 1; }
+        }
+
+        /* Helper spacing */
+        .mt-1 { margin-top: 1rem; }
+        .mt-2 { margin-top: 2rem; }
+        .mt-3 { margin-top: 3rem; }
+        .mt-4 { margin-top: 4rem; }
+        .mb-2 { margin-bottom: 2rem; }
+        .mb-4 { margin-bottom: 4rem; }
+        .text-xl { font-size: 28px; line-height: 1.6; }
+        .text-max { font-size: 64px; font-weight: 800; line-height: 1.2; text-shadow: 0 0 20px rgba(255,255,255,0.1); }
+        
+        /* Agent Layout */
+        .agent-icon {
+            font-size: 56px;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.2));
+        }
+        .agent-name {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+        .agent-sub {
+            font-size: 18px;
+            color: var(--muted);
+        }
+
+        /* Process Layout */
+        .process-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1300px;
+            margin-bottom: 4rem;
+        }
+
+        .process-step {
+            flex: 1;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .process-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+        }
+
+        .process-desc {
+            font-size: 18px;
+            color: var(--muted);
+        }
+
+        .arrow {
+            font-size: 32px;
+            color: var(--border);
+            font-weight: 300;
+        }
+
+        /* SVG Icons */
+        .svg-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto;
+            margin-bottom: 1.5rem;
+        }
+        .icon-red { stroke: var(--red); filter: drop-shadow(0 0 15px rgba(239,68,68,0.5)); }
+        .icon-blue { stroke: var(--blue); filter: drop-shadow(0 0 15px rgba(59,130,246,0.5)); }
+        .icon-yellow { stroke: var(--gold); filter: drop-shadow(0 0 15px rgba(234,179,8,0.5)); }
+
+    </style>
+</head>
+<body>
+
+    <div class="presentation" id="presentation">
+        
+        <!-- SLIDE 1 -->
+        <div class="slide bg-glow-red active">
+            <h1>DELPHI</h1>
+            <div class="subtitle">Three minds. One truth.</div>
+            <div class="bottom-text">Team Name • Hackathon Name</div>
+        </div>
+
+        <!-- SLIDE 2 -->
+        <div class="slide">
+            <div class="slide-title">THE PROBLEM</div>
+            
+            <div class="grid-3">
+                <div class="card card-red">
+                    <div class="stat-number color-red">73%</div>
+                    <div class="card-text">of web products fail within 90 days of launch</div>
+                </div>
+                <div class="card card-orange">
+                    <div class="stat-number color-orange">3 mo</div>
+                    <div class="card-text">average time wasted building before testing</div>
+                </div>
+                <div class="card card-yellow">
+                    <div class="stat-number color-yellow">₹0</div>
+                    <div class="card-text">spent on pre-launch intelligence by most startups</div>
+                </div>
+            </div>
+
+            <div class="text-xl mt-2 max-w-[800px] text-center" style="max-width: 900px; color: #cbd5e1;">
+                Founders build for months. Launch day arrives.<br>
+                Real users, real hackers, real investors —<br>
+                all see something completely different.
+            </div>
+        </div>
+
+        <!-- SLIDE 3 -->
+        <div class="slide">
+            <div class="slide-title">THE INSIGHT</div>
+            
+            <div class="text-max mb-4" style="max-width: 1100px;">
+                Every product has three judges waiting at launch.
+            </div>
+
+            <div class="grid-3" style="margin-top: 2rem;">
+                <div style="text-align: center;">
+                    <div class="agent-icon">🔴</div>
+                    <div class="agent-name">THE HACKER</div>
+                    <div class="agent-sub">finds every crack before you do</div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="agent-icon">🔵</div>
+                    <div class="agent-name">THE USER</div>
+                    <div class="agent-sub">gets confused where you see clarity</div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="agent-icon">🟡</div>
+                    <div class="agent-name">THE INVESTOR</div>
+                    <div class="agent-sub">judges value in 8 seconds flat</div>
+                </div>
+            </div>
+
+            <div class="bottom-text" style="font-size: 24px; color: #cbd5e1; bottom: 5rem;">
+                They don't wait for you to be ready.<br>
+                <strong style="color: white; font-size: 28px; line-height: 2;">DELPHI sends them in advance.</strong>
+            </div>
+        </div>
+
+        <!-- SLIDE 4 -->
+        <div class="slide bg-glow-red">
+            <div class="slide-title" style="margin-bottom: 0.5rem; font-size: 64px;">DELPHI</div>
+            <div class="subtitle" style="margin-bottom: 4rem; color: #f8fafc; font-weight: 300; font-size: 28px; letter-spacing: 0.05em;">Autonomous Pre-Launch Intelligence</div>
+
+            <div class="grid-3">
+                <div class="card card-red">
+                    <svg class="svg-icon icon-red" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    <div class="agent-name" style="color: var(--red); font-size: 24px;">SENTINEL</div>
+                    <div class="agent-sub">Security & Load Testing</div>
+                </div>
+                
+                <div class="card card-blue">
+                    <svg class="svg-icon icon-blue" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                    <div class="agent-name" style="color: var(--blue); font-size: 24px;">STRANGER</div>
+                    <div class="agent-sub">Human Experience Analysis</div>
+                </div>
+
+                <div class="card card-yellow">
+                    <svg class="svg-icon icon-yellow" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <div class="agent-name" style="color: var(--gold); font-size: 24px;">THE ORACLE</div>
+                    <div class="agent-sub">Business Intelligence</div>
+                </div>
+            </div>
+
+            <div class="text-xl mt-2" style="font-weight: 400; color: #cbd5e1;">
+                One URL. Three agents. Five minutes.<br>
+                <strong style="color: white;">Complete truth — before your users find it.</strong>
+            </div>
+        </div>
+
+        <!-- SLIDE 5 -->
+        <div class="slide">
+            <div class="slide-title">HOW IT WORKS</div>
+
+            <div class="process-container">
+                <div class="process-step">
+                    <div class="process-title">1. PASTE URL</div>
+                    <div class="process-desc">Any live website</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="process-step">
+                    <div class="process-title">2. 3 AGENTS DEPLOY</div>
+                    <div class="process-desc">Simultaneously, autonomously</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="process-step">
+                    <div class="process-title">3. STREAM LIVE</div>
+                    <div class="process-desc">Watch AI think in real time</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="process-step">
+                    <div class="process-title">4. VERDICT</div>
+                    <div class="process-desc">Score + fixes + survival probability</div>
+                </div>
+            </div>
+
+            <div class="bottom-text" style="font-size: 28px; color: var(--muted); bottom: 5rem;">
+                No setup. No configuration. No code. <strong style="color: white;">Just truth.</strong>
+            </div>
+        </div>
+
+        <!-- SLIDE 6 -->
+        <div class="slide">
+            <div class="slide-title">LIVE DEMO</div>
+            
+            <div class="text-max" style="margin-bottom: 1.5rem; font-size: 80px;">
+                Let us show you.
+            </div>
+            
+            <div class="subtitle" style="font-size: 36px;">
+                Any URL. Right now. From anyone in this room.
+            </div>
+
+            <div class="bottom-text" style="bottom: 8rem; width: 100%;">
+                <div class="pulse-dots">
+                    <div class="dot dot-red"></div>
+                    <div class="dot dot-blue"></div>
+                    <div class="dot dot-gold"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 7 -->
+        <div class="slide">
+            <div class="slide-title">WHY THIS IS NEW</div>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Tool</th>
+                        <th>Technical</th>
+                        <th>Human</th>
+                        <th>Business</th>
+                        <th>Real-time</th>
+                        <th>Free</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>GTmetrix</td>
+                        <td class="check">✔</td>
+                        <td class="cross">✖</td>
+                        <td class="cross">✖</td>
+                        <td class="cross">✖</td>
+                        <td class="check">✔</td>
+                    </tr>
+                    <tr>
+                        <td>Hotjar</td>
+                        <td class="cross">✖</td>
+                        <td class="check">✔</td>
+                        <td class="cross">✖</td>
+                        <td class="cross">✖</td>
+                        <td class="cross">✖</td>
+                    </tr>
+                    <tr>
+                        <td>Manual Audit</td>
+                        <td class="check">✔</td>
+                        <td class="check">✔</td>
+                        <td class="check">✔</td>
+                        <td class="cross">✖</td>
+                        <td class="cross">✖</td>
+                    </tr>
+                    <tr>
+                        <td>DELPHI</td>
+                        <td class="check">✔</td>
+                        <td class="check">✔</td>
+                        <td class="check">✔</td>
+                        <td class="check">✔</td>
+                        <td class="check">✔</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="bottom-text" style="font-size: 24px; color: var(--muted); bottom: 4rem;">
+                DELPHI is the only tool that does all five. <strong style="color: white; font-weight: 800;">Simultaneously.</strong>
+            </div>
+        </div>
+
+        <!-- SLIDE 8 -->
+        <div class="slide bg-glow-red">
+            <h1 style="font-size: 80px; max-width: 1100px; line-height: 1.2;">
+                Before the Oracle of Delphi,<br>no king went to war.
+            </h1>
+            
+            <div class="subtitle" style="margin-top: 2.5rem; font-size: 40px; color: var(--text); font-weight: 300;">
+                Before DELPHI,<br>
+                <div class="color-red mt-1" style="font-weight: 900; font-size: 56px;">no product should launch.</div>
+            </div>
+
+            <div class="bottom-text" style="font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase;">
+                github.com/TeamName/DELPHI &nbsp;&nbsp;|&nbsp;&nbsp; Team Names
+            </div>
+        </div>
+
+    </div>
+
+    <div class="slide-number">1 / 8</div>
+    <div class="progress-bar" style="width: 12.5%;"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const slideNumberDisplay = document.querySelector('.slide-number');
+        const progressBar = document.querySelector('.progress-bar');
+        const totalSlides = slides.length;
+        let currentSlide = 0;
+
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+            slideNumberDisplay.textContent = `${currentSlide + 1} / ${totalSlides}`;
+            progressBar.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'Enter') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+
+        // Click to navigate (right ¾ = next, left ¼ = prev)
+        document.addEventListener('click', (e) => {
+            const width = window.innerWidth;
+            if (e.clientX > width * 0.25) {
+                nextSlide();
+            } else {
+                prevSlide();
+            }
+        });
+
+        // Initialize
+        updateSlide();
+    </script>
+</body>
+</html>
