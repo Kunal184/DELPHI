@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { io } from 'socket.io-client';
+// import { io } from 'socket.io-client';
 import { runTestSimulation } from '../testSocket';
 
 const AGENT_ENDPOINTS = {
@@ -157,7 +157,7 @@ export default function useWebSocket() {
     testCleanupRef.current = runTestSimulation(handleMessage);
   }, [handleMessage, disconnectAll]);
 
-  const sendUrl = useCallback((url) => {
+  const sendUrl = useCallback(async (url) => {
     setTargetUrl(url);
     setScreen('dashboard');
 
@@ -175,61 +175,67 @@ export default function useWebSocket() {
     setBackendConnectivity('connecting');
     let connectedCount = 0;
     let failedCount = 0;
-    Object.entries(AGENT_ENDPOINTS).forEach(([agentName, endpoint]) => {
-      try {
-        const socket = io(endpoint, {
-          transports: ['websocket'],
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          timeout: 10000,
-        });
 
+    const connectToAgent = (agentName, endpoint) => {
+      return new Promise((resolve, reject) => {
+        const socket = new WebSocket(endpoint);
         socketsRef.current[agentName] = socket;
 
-        socket.on('connect', () => {
+        socket.onopen = () => {
           console.log(`[DELPHI] ${agentName.toUpperCase()} WebSocket connected`);
           connectedCount++;
           if (connectedCount === 3) {
             setOfflineStatus('connected');
             setBackendConnectivity('connected');
+            // Trigger the analysis via API once all sockets are connected
+            fetch('http://localhost:8000/api/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url })
+            }).catch(err => console.error("API Trigger failed:", err));
           }
-          socket.emit('message', { url });
-        });
+          resolve();
+        };
 
-        socket.on('message', (data) => {
+        socket.onmessage = (event) => {
           try {
-            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            const parsed = JSON.parse(event.data);
             handleMessage(parsed);
           } catch (err) {
             console.error(`[DELPHI] ${agentName.toUpperCase()} failed to parse message:`, err);
           }
-        });
+        };
 
-        socket.on('connect_error', (err) => {
-          console.warn(`[DELPHI] ${agentName.toUpperCase()} connection error:`, err.message);
+        socket.onerror = (err) => {
+          console.warn(`[DELPHI] ${agentName.toUpperCase()} connection error`);
           failedCount++;
-          // If any WebSocket fails, mark overall as error and trigger test mode
-          if (failedCount === 1) { 
+          if (failedCount === 1) {
             setOfflineStatus('error');
             setBackendConnectivity('error');
             setShowOfflineToast(true);
             setTimeout(() => {
               setShowOfflineToast(false);
             }, 4000);
-            
+
             // Automatically switch to demo mode after brief delay if connection fails
             setTimeout(() => {
               startTestMode(url);
             }, 500);
           }
-        });
+          reject();
+        };
 
-        socket.on('disconnect', (reason) => {
+        socket.onclose = (reason) => {
           console.log(`[DELPHI] ${agentName.toUpperCase()} disconnected:`, reason);
-        });
-      } catch (err) {
-        console.error(`[DELPHI] ${agentName.toUpperCase()} socket initialization error:`, err);
-      }
+        };
+
+        // For plain native WebSockets, we don't have disconnect(), we use close()
+        socket.disconnect = () => socket.close();
+      });
+    };
+
+    Object.entries(AGENT_ENDPOINTS).forEach(([agentName, endpoint]) => {
+      connectToAgent(agentName, endpoint).catch(() => { });
     });
   }, [handleMessage, disconnectAll, startTestMode]);
 

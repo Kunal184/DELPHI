@@ -21,36 +21,38 @@ async def send_message(websocket, msg_type, text, severity="INFO", category="gen
     else:
         print(f"[ORACLE] {msg_type}: {text}")
 
+def get_page_content(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    response = requests.get(url, headers=headers, timeout=15)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    return response, soup
+
 async def run_oracle(url, websocket):
     await send_message(websocket, "reasoning", "Loading page to extract full text and evaluate business positioning...", "INFO", "init")
     try:
-        from playwright.async_api import async_playwright
-        playwright = await async_playwright().start()
-        browser = await playwright.chromium.launch(headless=True)
-        context = await browser.new_context()
-        page = await context.new_page()
-        await page.goto(url, wait_until="networkidle")
+        loop = asyncio.get_event_loop()
+        resp, soup = await loop.run_in_executor(None, get_page_content, url)
         
         # 1. Scrape full text
-        page_info = await page.evaluate('''() => {
-            const getVisibleText = (element) => {
-                if (element.offsetWidth > 0 && element.offsetHeight > 0) {
-                    return element.innerText;
-                }
-                return "";
-            };
-            const headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(h => getVisibleText(h)).filter(t => t.trim() !== "");
-            const paragraphs = Array.from(document.querySelectorAll('p')).map(p => getVisibleText(p)).filter(t => t.trim() !== "");
-            const ctas = Array.from(document.querySelectorAll('a, button')).map(el => getVisibleText(el)).filter(t => t.trim() !== "");
-            const links = Array.from(document.querySelectorAll('a')).map(a => a.href).filter(l => l.startsWith('http'));
-            return {
-                headings, paragraphs, ctas, links, full_text: document.body.innerText
-            };
-        }''')
+        headings = [h.get_text(strip=True) for h in soup.find_all(['h1', 'h2', 'h3'])]
+        paragraphs = [p.get_text(strip=True) for p in soup.find_all('p')]
+        ctas = [c.get_text(strip=True) for c in soup.find_all(['a', 'button'])]
+        links = [a.get('href') for a in soup.find_all('a', href=True) if a.get('href').startswith('http')]
+        full_text = soup.get_text(separator=' ', strip=True)
         
-        full_text_lower = page_info['full_text'].lower()
+        page_info = {
+            'headings': headings,
+            'paragraphs': paragraphs,
+            'ctas': ctas,
+            'links': links,
+            'full_text': full_text
+        }
+        
+        full_text_lower = full_text.lower()
         # 2. Value proposition analysis
-        prompt = oracle_business_reasoning(page_info['full_text'])
+        prompt = oracle_business_reasoning(full_text)
         await stream_reasoning(prompt, websocket, "oracle")
         
         buzzwords = ['revolutionary', 'seamless', 'innovative', 'next-gen', 'paradigm shift', 'synergy']
@@ -125,18 +127,13 @@ async def run_oracle(url, websocket):
         # 7. Grammar / Professionalism check
         await send_message(websocket, "reasoning", "Running copy grammar and professionalism checks...", "INFO", "grammar")
         
-        all_caps = re.findall(r'\b[A-Z]{5,}\b', page_info['full_text']) # Words 5+ chars ALL CAPS
+        all_caps = re.findall(r'\b[A-Z]{5,}\b', full_text) # Words 5+ chars ALL CAPS
         if len(all_caps) > 5:
             await send_message(websocket, "finding", f"Excessive ALL CAPS words used ({len(all_caps)} instances). Reduces professionalism.", "LOW", "grammar", 0)
             
-        exclamations = len(re.findall(r'!!+', page_info['full_text']))
+        exclamations = len(re.findall(r'!!+', full_text))
         if exclamations > 0:
             await send_message(websocket, "finding", f"Unprofessional punctuation detected (multiple exclamation marks '!!'): {exclamations} instances.", "MEDIUM", "grammar", 0)
-
-        await page.close()
-        await context.close()
-        await browser.close()
-        await playwright.stop()
 
     except Exception as e:
         import traceback

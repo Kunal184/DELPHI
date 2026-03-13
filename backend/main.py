@@ -15,7 +15,9 @@ from agents.sentinel import run_sentinel
 from agents.stranger import run_stranger
 from agents.oracle import run_oracle
 
-app = FastAPI(title="DELPHI Backend")
+app = FastAPI()
+
+from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,7 +101,18 @@ async def run_all_agents(url: str):
     
     await manager.broadcast(final_message)
 
-@app.websocket("/ws/{agent_name}")
+@app.websocket("/ws/sentinel")
+async def websocket_sentinel(websocket: WebSocket):
+    await websocket_endpoint(websocket, "sentinel")
+
+@app.websocket("/ws/stranger")
+async def websocket_stranger(websocket: WebSocket):
+    await websocket_endpoint(websocket, "stranger")
+
+@app.websocket("/ws/oracle")
+async def websocket_oracle(websocket: WebSocket):
+    await websocket_endpoint(websocket, "oracle")
+
 async def websocket_endpoint(websocket: WebSocket, agent_name: str):
     await manager.connect(agent_name, websocket)
     try:

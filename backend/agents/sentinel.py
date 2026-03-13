@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin, urlparse
 import ssl
 import socket
+from bs4 import BeautifulSoup
 from core.ollama_client import stream_reasoning
 from core.prompts import (
     sentinel_crawl_reasoning,
@@ -28,14 +29,17 @@ async def send_message(websocket, msg_type, text, severity="INFO", category="gen
     else:
         print(f"[SENTINEL] {msg_type}: {text}")
 
+def get_page_content(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    response = requests.get(url, headers=headers, timeout=15)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    return response, soup
+
 async def run_sentinel(url, websocket):
     await send_message(websocket, "reasoning", f"Starting Sentinel analysis for {url}", "INFO", "init")
     await asyncio.sleep(0.5)
-
-    from playwright.async_api import async_playwright
-    playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch(headless=True)
-    pw_context = await browser.new_context()
 
     base_domain = urlparse(url).netloc
     discovered_endpoints = set([url])
@@ -43,38 +47,34 @@ async def run_sentinel(url, websocket):
 
     # 1. Autonomous crawling
     try:
-        page = await pw_context.new_page()
-        await page.goto(url, wait_until="networkidle")
+        loop = asyncio.get_event_loop()
+        resp, soup = await loop.run_in_executor(None, get_page_content, url)
         
         # Extract links
-        hrefs = await page.evaluate('''() => {
-            return Array.from(document.querySelectorAll('a')).map(a => a.href);
-        }''')
-        
-        for href in hrefs:
-            if href and href.startswith('http'):
-                if urlparse(href).netloc == base_domain:
-                    discovered_endpoints.add(href)
+        for a in soup.find_all('a', href=True):
+            href = urljoin(url, a['href'])
+            if urlparse(href).netloc == base_domain:
+                discovered_endpoints.add(href)
         
         # Extract forms
-        forms = await page.evaluate('''() => {
-            return Array.from(document.querySelectorAll('form')).map(form => {
-                return {
-                    action: form.action,
-                    method: form.method || 'GET',
-                    inputs: Array.from(form.querySelectorAll('input, textarea')).map(input => ({
-                        name: input.name,
-                        type: input.type
-                    }))
-                };
-            });
-        }''')
-        discovered_forms = forms
+        for form in soup.find_all('form'):
+            action = urljoin(url, form.get('action', ''))
+            method = form.get('method', 'GET').upper()
+            inputs = []
+            for inp in form.find_all(['input', 'textarea']):
+                inputs.append({
+                    'name': inp.get('name'),
+                    'type': inp.get('type', 'text')
+                })
+            discovered_forms.append({
+                'action': action,
+                'method': method,
+                'inputs': inputs
+            })
         
         await send_message(websocket, "finding", f"Discovered {len(discovered_endpoints)} internal endpoints and {len(discovered_forms)} forms", "LOW", "crawling", len(discovered_endpoints))
         prompt = sentinel_crawl_reasoning(endpoints_found=len(discovered_endpoints), forms_found=len(discovered_forms))
         await stream_reasoning(prompt, websocket, "sentinel")
-        await page.close()
     except Exception as e:
         await send_message(websocket, "finding", f"Failed to crawl: {e}", "CRITICAL", "crawling", 0)
 
@@ -211,7 +211,5 @@ async def run_sentinel(url, websocket):
     else:
         await send_message(websocket, "finding", "Target is not using HTTPS (No SSL)", "HIGH", "ssl", 0)
 
-    await browser.close()
-    await playwright.stop()
     await send_message(websocket, "judgment", "Technical analysis complete.", "INFO", "status", 0)
     return {"status": "done"}
