@@ -1,5 +1,5 @@
-import sys
 import asyncio
+import os
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -162,4 +162,5 @@ async def websocket_endpoint(websocket: WebSocket, agent_name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, loop="asyncio")
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False, loop="asyncio")

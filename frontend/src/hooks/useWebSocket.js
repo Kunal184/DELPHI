@@ -1,10 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { runTestSimulation } from '../testSocket';
 
+const isLocal = window.location.hostname === 'localhost';
+const API_BASE = isLocal ? 'http://localhost:8000' : `https://${window.location.hostname.replace('delphi', 'delphi-api')}`; // Adjust fallback as needed
+const WS_BASE = isLocal ? 'ws://localhost:8000' : `wss://${window.location.hostname.replace('delphi', 'delphi-api')}`;
+
 const WS_URLS = {
-  sentinel: 'ws://https://localhost:8000//ws/sentinel',
-  stranger: 'ws://https://localhost:8000//ws/stranger',
-  oracle: 'ws://https://localhost:8000//ws/oracle'
+  sentinel: `${WS_BASE}/ws/sentinel`,
+  stranger: `${WS_BASE}/ws/stranger`,
+  oracle: `${WS_BASE}/ws/oracle`
 }
 
 const initialAgentState = {
@@ -37,7 +41,7 @@ export default function useWebSocket() {
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const resp = await fetch('http://localhost:8000/api/analyze', { method: 'OPTIONS' });
+        const resp = await fetch(`${API_BASE}/api/analyze`, { method: 'OPTIONS' });
         if (resp.ok) setBackendConnectivity('connected');
       } catch (e) {
         setBackendConnectivity('error');
@@ -136,7 +140,7 @@ export default function useWebSocket() {
       ws.onopen = () => {
         connectedCount++;
         if (connectedCount === 3) {
-          fetch('http://localhost:8000/api/analyze', {
+          fetch(`${API_BASE}/api/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
