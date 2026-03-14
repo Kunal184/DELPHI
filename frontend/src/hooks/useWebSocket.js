@@ -37,7 +37,7 @@ export default function useWebSocket() {
   const wsRefs = useRef({});
   const testTimerRef = useRef(null);
 
-  // Check connectivity on mount
+  // No mount-time check to avoid false-positives during Render cold starts
   useEffect(() => {
     const checkBackend = async () => {
       try {
@@ -113,12 +113,8 @@ export default function useWebSocket() {
   }, [handleMessage]);
 
   const sendUrl = useCallback((url) => {
-    if (backendConnectivity === 'error') {
-      setShowOfflineToast(true);
-      setTimeout(() => setShowOfflineToast(false), 4000);
-      startTestMode();
-      return;
-    }
+    // We NO LONGER block here. We allow the connection attempt to go through.
+    // This fixes the issue where a failed mount-check permanently blocked sessions.
 
     setTargetUrl(url);
     setScreen('dashboard');
@@ -133,11 +129,22 @@ export default function useWebSocket() {
     let connectedCount = 0;
     const agents = ['sentinel', 'stranger', 'oracle'];
 
+    // Setup a fallback timer: if we don't connect in 40 seconds, trigger demo mode
+    const fallbackTimer = setTimeout(() => {
+      if (connectedCount < 3) {
+        console.warn("Connection timeout - falling back to demo mode");
+        setShowOfflineToast(true);
+        setTimeout(() => setShowOfflineToast(false), 4000);
+        startTestMode();
+      }
+    }, 40000);
+
     agents.forEach(agent => {
       const ws = new WebSocket(WS_URLS[agent]);
       wsRefs.current[agent] = ws;
 
       ws.onopen = () => {
+        setBackendConnectivity('connected');
         connectedCount++;
         if (connectedCount === 3) {
           fetch(`${API_BASE}/api/analyze`, {
@@ -146,7 +153,7 @@ export default function useWebSocket() {
             body: JSON.stringify({ url })
           }).catch(err => {
             console.error("Failed to trigger analysis", err);
-            setBackendConnectivity('error');
+            // If the POST fails but sockets are open, we might stay live but show error
           });
         }
       };
@@ -166,7 +173,7 @@ export default function useWebSocket() {
         console.log(`${agent} connection closed`);
       };
     });
-  }, [handleMessage, backendConnectivity, startTestMode]);
+  }, [handleMessage, startTestMode]);
 
   const resetAll = useCallback(() => {
     Object.values(wsRefs.current).forEach(ws => ws?.close());
