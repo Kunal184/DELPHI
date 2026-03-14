@@ -1,5 +1,7 @@
 import sys
+import os
 import asyncio
+import json
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -16,8 +18,6 @@ from agents.stranger import run_stranger
 from agents.oracle import run_oracle
 
 app = FastAPI()
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,17 +88,20 @@ async def run_all_agents(url: str, ws_sentinel, ws_stranger, ws_oracle):
     # Collect results from agents
     results = await asyncio.gather(t1, t2, t3, return_exceptions=True)
     
-    # Extract findings from results
-    sentinel_findings = results[0] if not isinstance(results[0], Exception) else []
-    stranger_findings = results[1] if not isinstance(results[1], Exception) else []
-    oracle_findings = results[2] if not isinstance(results[2], Exception) else []
+    # Extract findings from results - ensuring they are lists
+    sentinel_findings = results[0] if isinstance(results[0], list) else []
+    stranger_findings = results[1] if isinstance(results[1], list) else []
+    oracle_findings = results[2] if isinstance(results[2], list) else []
     
     # Calculate scores
     sentinel_score = calculate_agent_score(sentinel_findings)
     stranger_score = calculate_agent_score(stranger_findings)
     oracle_score = calculate_agent_score(oracle_findings)
     
-    all_findings = sentinel_findings + stranger_findings + oracle_findings
+    all_findings = []
+    all_findings.extend(sentinel_findings)
+    all_findings.extend(stranger_findings)
+    all_findings.extend(oracle_findings)
     top_finding_texts = [f['text'] for f in all_findings if f.get('severity') in ['CRITICAL', 'HIGH']]
     
     # Generate the text summary via LLM
@@ -162,4 +165,5 @@ async def websocket_endpoint(websocket: WebSocket, agent_name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, loop="asyncio")
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False, loop="asyncio")
