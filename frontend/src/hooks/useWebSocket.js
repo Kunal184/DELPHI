@@ -2,9 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { runTestSimulation } from '../testSocket';
 
 const WS_URLS = {
-  sentinel: 'ws://localhost:8000/ws/sentinel',
-  stranger: 'ws://localhost:8000/ws/stranger',
-  oracle: 'ws://localhost:8000/ws/oracle'
+  sentinel: 'wss://delphi-backend.onrender.com/ws/sentinel',
+  stranger: 'wss://delphi-backend.onrender.com/ws/stranger',
+  oracle: 'wss://delphi-backend.onrender.com/ws/oracle'
 }
 
 const initialAgentState = {
@@ -33,7 +33,9 @@ export default function useWebSocket() {
   const wsRefs = useRef({});
   const testTimerRef = useRef(null);
 
+  // No mount-time check to avoid false-positives during Render cold starts
   useEffect(() => {
+    // We intentionally start as 'connected' and only move to error if an actual action fails
   }, []);
 
   const handleMessage = useCallback((data) => {
@@ -99,9 +101,13 @@ export default function useWebSocket() {
   }, [handleMessage]);
 
   const sendUrl = useCallback((url) => {
+    // We NO LONGER block here. We allow the connection attempt to go through.
+    // This fixes the issue where a failed mount-check permanently blocked sessions.
+
     setTargetUrl(url);
     setScreen('dashboard');
 
+    // Reset state
     setSentinelData({ ...initialAgentState, status: 'analyzing' });
     setStrangerData({ ...initialAgentState, status: 'analyzing' });
     setOracleData({ ...initialAgentState, status: 'analyzing' });
@@ -111,6 +117,7 @@ export default function useWebSocket() {
     let connectedCount = 0;
     const agents = ['sentinel', 'stranger', 'oracle'];
 
+    // Setup a fallback timer: if we don't connect in 40 seconds, trigger demo mode
     const fallbackTimer = setTimeout(() => {
       if (connectedCount < 3) {
         console.warn("Connection timeout - falling back to demo mode");
@@ -129,12 +136,13 @@ export default function useWebSocket() {
         connectedCount++;
         if (connectedCount === 3) {
           clearTimeout(fallbackTimer);
-          fetch('http://localhost:8000/api/analyze', {
+          fetch('https://delphi-backend.onrender.com/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
           }).catch(err => {
             console.error("Failed to trigger analysis", err);
+            // If the POST fails but sockets are open, we might stay live but show error
           });
         }
       };
