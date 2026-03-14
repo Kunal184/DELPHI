@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { runTestSimulation } from '../testSocket';
 
 const isLocal = window.location.hostname === 'localhost';
-const API_BASE = isLocal ? 'http://localhost:8000' : `https://${window.location.hostname.replace('delphi', 'delphi-api')}`; // Adjust fallback as needed
+const API_BASE = isLocal ? 'http://localhost:8000' : `https://${window.location.hostname.replace('delphi', 'delphi-api')}`;
 const WS_BASE = isLocal ? 'ws://localhost:8000' : `wss://${window.location.hostname.replace('delphi', 'delphi-api')}`;
 
 const WS_URLS = {
@@ -36,8 +36,8 @@ export default function useWebSocket() {
 
   const wsRefs = useRef({});
   const testTimerRef = useRef(null);
+  const fallbackTimerRef = useRef(null);
 
-  // No mount-time check to avoid false-positives during Render cold starts
   useEffect(() => {
     const checkBackend = async () => {
       try {
@@ -113,9 +113,6 @@ export default function useWebSocket() {
   }, [handleMessage]);
 
   const sendUrl = useCallback((url) => {
-    // We NO LONGER block here. We allow the connection attempt to go through.
-    // This fixes the issue where a failed mount-check permanently blocked sessions.
-
     setTargetUrl(url);
     setScreen('dashboard');
 
@@ -130,7 +127,7 @@ export default function useWebSocket() {
     const agents = ['sentinel', 'stranger', 'oracle'];
 
     // Setup a fallback timer: if we don't connect in 40 seconds, trigger demo mode
-    const fallbackTimer = setTimeout(() => {
+    fallbackTimerRef.current = setTimeout(() => {
       if (connectedCount < 3) {
         console.warn("Connection timeout - falling back to demo mode");
         setShowOfflineToast(true);
@@ -147,13 +144,13 @@ export default function useWebSocket() {
         setBackendConnectivity('connected');
         connectedCount++;
         if (connectedCount === 3) {
+          clearTimeout(fallbackTimerRef.current);
           fetch(`${API_BASE}/api/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
           }).catch(err => {
             console.error("Failed to trigger analysis", err);
-            // If the POST fails but sockets are open, we might stay live but show error
           });
         }
       };
@@ -180,6 +177,8 @@ export default function useWebSocket() {
     wsRefs.current = {};
     if (testTimerRef.current) testTimerRef.current();
     testTimerRef.current = null;
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    fallbackTimerRef.current = null;
 
     setScreen('landing');
     setTargetUrl('');
@@ -194,6 +193,7 @@ export default function useWebSocket() {
     return () => {
       Object.values(wsRefs.current).forEach(ws => ws?.close());
       if (testTimerRef.current) testTimerRef.current();
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
     };
   }, []);
 
