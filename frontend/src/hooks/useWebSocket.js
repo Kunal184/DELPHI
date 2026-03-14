@@ -2,9 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { runTestSimulation } from '../testSocket';
 
 const WS_URLS = {
-  sentinel: 'wss://delphi-backend.onrender.com/ws/sentinel',
-  stranger: 'wss://delphi-backend.onrender.com/ws/stranger',
-  oracle: 'wss://delphi-backend.onrender.com/ws/oracle'
+  sentinel: 'ws://localhost:8000/ws/sentinel',
+  stranger: 'ws://localhost:8000/ws/stranger',
+  oracle: 'ws://localhost:8000/ws/oracle'
 }
 
 const initialAgentState = {
@@ -136,7 +136,7 @@ export default function useWebSocket() {
         connectedCount++;
         if (connectedCount === 3) {
           clearTimeout(fallbackTimer);
-          fetch('https://delphi-backend.onrender.com/api/analyze', {
+          fetch('http://localhost:8000/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
