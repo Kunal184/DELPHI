@@ -2,8 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { runTestSimulation } from '../testSocket';
 
 const isLocal = window.location.hostname === 'localhost';
-const API_BASE = isLocal ? 'http://localhost:8000' : `https://${window.location.hostname.replace('delphi', 'delphi-api')}`;
-const WS_BASE = isLocal ? 'ws://localhost:8000' : `wss://${window.location.hostname.replace('delphi', 'delphi-api')}`;
+const API_BASE = isLocal ? 'http://localhost:8000' : 'https://delphi-production-1a82.up.railway.app';
+const WS_BASE = isLocal ? 'ws://localhost:8000' : 'wss://delphi-production-1a82.up.railway.app';
 
 const WS_URLS = {
   sentinel: `${WS_BASE}/ws/sentinel`,
